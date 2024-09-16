@@ -1,23 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
 project(nimbro_primitive_fitter)
 
-SET(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")                                         
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake) # For finding custom .cmake files               
-
-# find_package(catkin REQUIRED COMPONENTS
-#     cmake_modules
-#     roslib
-#     roscpp
-#     rospack
-#     rosparam
-# )
+SET(CMAKE_VERBOSE_MAKEFILE TRUE)
+SET(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake) # For finding custom .cmake files
 
 find_package(Boost REQUIRED COMPONENTS system regex)
 find_package(Eigen3 REQUIRED)
 find_package(PugiXML REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(roboptim-capsule REQUIRED )
+find_package(roboptim-capsule REQUIRED)
+find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 include_directories(
@@ -31,7 +25,7 @@ include_directories(
     contrib/approx_mvbb/external/GeometryPredicates/include/ApproxMVBB/GeometryPredicates
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIR}
-    ${PUGIXML_INCLUDE_DIR} 
+    ${PUGIXML_INCLUDE_DIR}
     ${roboptim-capsule_INCLUDE_DIRS}
 )
 
@@ -61,7 +55,7 @@ add_library(approx_mvbb
     contrib/approx_mvbb/external/Diameter/src/EstimateDiameter.cpp
 )
 
-add_executable(nimbro_primitive_fitter 
+add_executable(nimbro_primitive_fitter
     src/primitive_fitter.cpp
     src/inertia.cpp
     src/util.cpp
@@ -73,8 +67,12 @@ target_link_libraries(nimbro_primitive_fitter
     ${PUGIXML_LIBRARIES}
     roboptim-capsule::roboptim-capsule
     approx_mvbb
-)
+  )
 
+
+string(REPLACE ";" " " WARNING_CXX_FLAGS "${WARNING_CXX_FLAGS_LIST}")
+
+set(CMAKE_CXX_FLAGS "${WARNING_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 install(TARGETS
   nimbro_primitive_fitter
   DESTINATION lib/${PROJECT_NAME}
@@ -84,3 +82,9 @@ install(TARGETS
   approx_mvbb
   DESTINATION lib
 )
+
+install(DIRECTORY launch models
+  DESTINATION share/${PROJECT_NAME}
+)
+
+ament_package()
