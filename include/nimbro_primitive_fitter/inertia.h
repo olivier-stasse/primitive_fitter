@@ -17,12 +17,5 @@ class MyEdge    : public vcg::Edge<MyUsedTypes> {};
 class MyMesh    : public vcg::tri::TriMesh< std::vector<MyVertex>, std::vector<MyFace> , std::vector<MyEdge>  > {};
 
 
-std::string getFileExtension(std::string meshfile);
+//std::string getFileExtension(std::string meshfile, const rclcpp::Node &nh);
 
-/*
- * Reads URDF and updates inertia values and center of mass for each link.
- * 'urdf_filename': Path of the URDF
- * 'visual': If true, visual meshes are used for calculation.
- *           If false, collision meshes are used.
- */
-void update_inertia(std::string in_filename, std::string out_filename, bool visual, const ros::NodeHandle nh);
