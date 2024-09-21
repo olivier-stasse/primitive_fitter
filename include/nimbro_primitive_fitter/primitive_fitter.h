@@ -22,11 +22,37 @@
 
 #include <fstream>
 
+#include <wrap/io_trimesh/import_stl.h>
+#include <vcg/complex/algorithms/inertia.h>
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <nimbro_primitive_fitter/primitive_fitter.h>
+#include <nimbro_primitive_fitter/inertia.h>
+
+
+#define NODE_NAME "nimbro_primitive_fitter"
+#include <ament_index_cpp/get_package_share_directory.hpp>
+
+
 using namespace roboptim;
 using namespace roboptim::capsule;
 
 class Urdf;
+class PrimitiveFitterNode : public rclcpp::Node {
+  public:
+  std::shared_ptr<PrimitiveFitterNode> shr_ptr_to_this_;
 
+  PrimitiveFitterNode();
+  ~PrimitiveFitterNode();
+
+  void setSharedPointer(std::shared_ptr<PrimitiveFitterNode> a_shr_ptr);
+  std::string getFileExtension(std::string meshfile);
+  void update_inertia(std::string in_filename, std::string out_filename,
+                      bool visual);
+  void main(void);
+
+};
 
 
 /**
@@ -223,7 +249,7 @@ class BoxFit: public ShapeFit
 class VersatileFitter
 {
  public:
-  VersatileFitter(std::shared_ptr<rclcpp::Node> nh);
+  VersatileFitter(std::shared_ptr<PrimitiveFitterNode> nh);
 
   /**
    * All currently supported shapes.
@@ -242,7 +268,7 @@ class VersatileFitter
  private:
   std::string getFileExtension(std::string meshfile);
   void loadMesh(std::string meshfile);
-  std::shared_ptr<rclcpp::Node> nh_;
+  std::shared_ptr<PrimitiveFitterNode> nh_;
 };
 
 
@@ -278,7 +304,7 @@ class Urdf
   /*
    * Constructor: Accept the urdf file path (mandatory). Add collision tags as xacro (optional)
    */
-  Urdf(const char* filepath, bool xacro, std::shared_ptr<rclcpp::Node> nh);
+  Urdf(const char* filepath, bool xacro, std::shared_ptr<PrimitiveFitterNode> nh);
 
   /*
    * Replace mesh based collision file capsule based plain urdf collision tags. Adds three tags that approximate a capsule: <spher>, <cylinder>, <sphere>.
@@ -364,7 +390,7 @@ class Urdf
   bool m_xacro;
   bool m_URDFLoaded = false;
 
-  std::shared_ptr<rclcpp::Node> nh_;
+  std::shared_ptr<PrimitiveFitterNode> nh_;
 };
 
 

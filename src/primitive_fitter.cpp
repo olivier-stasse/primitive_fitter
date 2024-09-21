@@ -33,6 +33,7 @@
 
 #include "../contrib/approx_mvbb/include/ApproxMVBB/ComputeApproxMVBB.hpp"
 
+#include "nimbro_primitive_fitter/inertia.h"
 #include <roboptim/capsule/util.hh>
 
 #define NODE_NAME "nimbro_primitive_fitter"
@@ -61,17 +62,17 @@ BoxFit::BoxFit(std::vector<double> points, Eigen::Vector3d translation,
   std::string nodeName = NODE_NAME;
 
   pointSamples = nh_->get_parameter("/" + nodeName +
-                                  "/boxfit/pointSamples_is_relative").as_double();
+                                    "/boxfit/pointSamples_is_relative").as_double();
   epsilon = nh_->get_parameter("/" + nodeName +
-                             "/boxfit/epsilon").as_double();
+                               "/boxfit/epsilon").as_double();
   pointSamples = nh_->get_parameter("/" + nodeName +
-                                  "/boxfit/pointSamples").as_double();
+                                    "/boxfit/pointSamples").as_double();
   gridSize = nh_->get_parameter("/" + nodeName +
-                              "/boxfit/gridSize").as_double();
+                                "/boxfit/gridSize").as_double();
   mvbbDiamOptLoops = nh_->get_parameter("/" + nodeName +
-                                      "/boxfit/mvbbDiamOptLoops").as_double();
+                                        "/boxfit/mvbbDiamOptLoops").as_double();
   mvbbGridSearchOptLoops = nh_->get_parameter("/" + nodeName +
-                                            "/boxfit/mvbbGridSearchOptLoops").as_double();
+                                              "/boxfit/mvbbGridSearchOptLoops").as_double();
 
   int num_samples;
 
@@ -85,9 +86,9 @@ BoxFit::BoxFit(std::vector<double> points, Eigen::Vector3d translation,
   }
 
   RCLCPP_INFO_STREAM(nh_->get_logger(),
-                  "using " << num_samples
-                  << " samples(out of "
-                  << m_points.cols() << ")...");
+                     "using " << num_samples
+                     << " samples(out of "
+                     << m_points.cols() << ")...");
 
   m_oobb = ApproxMVBB::approximateMVBB(m_points, epsilon, num_samples, gridSize,
                                        mvbbDiamOptLoops,
@@ -110,8 +111,8 @@ BoxFit::BoxFit(std::vector<double> points, Eigen::Vector3d translation,
   {
     RCLCPP_ERROR(nh_->get_logger(),"Faulty box-size vector! (Infinity detected)");
     RCLCPP_ERROR(nh_->get_logger(),
-              "Most likely this is caused by a bad mesh. Try reducing the detail of the mesh.");
-		
+                 "Most likely this is caused by a bad mesh. Try reducing the detail of the mesh.");
+
     m_box_size[0] = 0;
     m_box_size[1] = 0;
     m_box_size[2] = 0;
@@ -127,7 +128,7 @@ BoxFit::BoxFit(std::vector<double> points, Eigen::Vector3d translation,
   RCLCPP_INFO_STREAM(nh_->get_logger(),"Box size: " << m_box_size );
   RCLCPP_INFO_STREAM(nh_->get_logger(),"Box center: " << m_box_center );
   RCLCPP_INFO_STREAM(nh_->get_logger(), "r: p: y:" << m_roll << "   "
-                                                 << m_pitch
+                     << m_pitch
                      << "   "  << m_yaw ) ;
 }
 
@@ -152,7 +153,7 @@ void BoxFit::readPoints(const std::vector<double> points)
   int num_coords = points.size();
 
   RCLCPP_DEBUG_STREAM(nh_->get_logger(),"File contains: " << num_coords / 3 << " points");
-	
+
   // Parse points
   boost::unordered_set<std::vector<float>> u_pointset;
   u_pointset.clear();
@@ -454,7 +455,7 @@ void CapsuleFit::writeXacroMacro(const pugi::xml_document* doc)
 //******************************************************************************************************************
 // URDF class
 Urdf::Urdf(const char *filepath, bool xacro_support,
-           std::shared_ptr<rclcpp::Node> nh) : nh_(nh)
+           std::shared_ptr<PrimitiveFitterNode> nh) : nh_(nh)
 {
   m_filepath = filepath;
   m_xacro = xacro_support; // boolean
@@ -506,7 +507,7 @@ void Urdf::addXacroDef()
 {
   RCLCPP_DEBUG(nh_->get_logger(),
                "Adding xacro definitions...");
-	
+
   // NOTE: write macros for each shape!
   CapsuleFit::writeXacroMacro(&m_doc);
   BoxFit::writeXacroMacro(&m_doc);
@@ -575,7 +576,7 @@ void Urdf::replaceMeshWithXacro(std::shared_ptr<ShapeFit> shape)
   if (!m_lastLinkNode.remove_child("collision"))   // BUG Says skipping, but is not?
   {
     RCLCPP_INFO_STREAM(nh_->get_logger(),
-                    "Can't remove collision element. Skipping..." );
+                       "Can't remove collision element. Skipping..." );
   }
 
   shape->writeUrdfXacro(std::make_shared<pugi::xml_node>(m_lastLinkNode));
@@ -740,11 +741,11 @@ Stl::Stl(std::string url,
          std::shared_ptr<rclcpp::Node> nh): MeshFile(nh)
 {
   url::Url filepath(url);
-	
+
   std::string pkgPath = ament_index_cpp::get_package_share_directory(filepath.getPackageName());
   std::string filename = pkgPath + filepath.getRelativePath();
   RCLCPP_INFO_STREAM(nh_->get_logger(),"STL file path: " << filename );
-	
+
   m_filestream.open(filename.c_str(), std::ios::in | std::ios::binary);
 
   // Check if filestream is corrupted
@@ -913,7 +914,7 @@ Eigen::Matrix4d Dae::getTransformationMatrix()
 
 
 //*******************************************************************************************************************
-VersatileFitter::VersatileFitter(std::shared_ptr<rclcpp::Node> nh) : nh_(nh)
+VersatileFitter::VersatileFitter(std::shared_ptr<PrimitiveFitterNode> nh) : nh_(nh)
 {
 }
 
@@ -945,7 +946,8 @@ void VersatileFitter::fit(std::string urdf_filename,
 {
   try
   {
-    Urdf urdf(urdf_filename.c_str(), true, nh_);
+    Urdf urdf(urdf_filename.c_str(), true,nh_);
+
 
     // Return if the urdf was not loaded
     if ( !urdf.loaded() )
@@ -986,7 +988,7 @@ void VersatileFitter::fit(std::string urdf_filename,
       Eigen::Vector3d t = urdf.getMeshTranslation();
       Eigen::Vector3d r = urdf.getMeshRotation();
       Eigen::Vector3d s = urdf.getMeshScale();
-			
+
       RCLCPP_DEBUG_STREAM(nh_->get_logger(),"Mesh translation: " << t );
       RCLCPP_DEBUG_STREAM(nh_->get_logger(),"Mesh rotation: " << r );
       RCLCPP_DEBUG_STREAM(nh_->get_logger(),"Mesh scale: " << s );
@@ -1027,3 +1029,239 @@ void VersatileFitter::fit(std::string urdf_filename,
   }
 }
 
+PrimitiveFitterNode::PrimitiveFitterNode()
+    : Node(NODE_NAME) {
+  RCLCPP_INFO(this->get_logger(),
+              " ********** NimbRo Primitive Fitter started ********** ");
+
+  declare_parameter("urdf_filename", rclcpp::PARAMETER_STRING);
+  declare_parameter("output_filename", rclcpp::PARAMETER_STRING);
+  declare_parameter("fit_shape", rclcpp::PARAMETER_STRING);
+  declare_parameter("use_fitter", rclcpp::PARAMETER_BOOL);
+  declare_parameter("use_inertia", rclcpp::PARAMETER_BOOL);
+  declare_parameter("mesh_type", rclcpp::PARAMETER_STRING);
+};
+
+PrimitiveFitterNode::~PrimitiveFitterNode()
+{};
+
+void PrimitiveFitterNode::setSharedPointer(std::shared_ptr<PrimitiveFitterNode> a_shr_ptr) {
+  shr_ptr_to_this_ = a_shr_ptr;
+}
+
+std::string PrimitiveFitterNode::getFileExtension(std::string meshfile)
+{
+  std::string file_extension("");
+
+  // Get file extension
+  std::regex file_regex("([^\\\\.]+)(\\.)([^\\\\.]+)");
+  std::smatch r_match;
+
+  if (std::regex_search(meshfile, r_match, file_regex))
+  {
+    file_extension = r_match[3];
+    RCLCPP_DEBUG_STREAM(get_logger(), "Detected file extension ." << r_match[3] );
+  }
+  else
+  {
+    RCLCPP_INFO(get_logger(), "NO FILE EXTENSION FOUND!" );
+  }
+
+  return file_extension;
+}
+
+void PrimitiveFitterNode::update_inertia(std::string in_filename,
+                                         std::string out_filename,
+                                         bool visual)
+{
+  Urdf urdf(in_filename.c_str(), false, shr_ptr_to_this_);
+
+  // Return if the urdf was not loaded
+  if ( !urdf.loaded() )
+  {
+    RCLCPP_ERROR(get_logger(), "URDF could not be loaded." );
+    return;
+  }
+
+  bool hasMoreMesh;
+
+  if (visual)
+  {
+    hasMoreMesh = urdf.hasMoreVisualMesh();
+  }
+  else
+  {
+    hasMoreMesh = urdf.hasMoreMesh();
+  }
+
+  while (hasMoreMesh)
+  {
+    std::string meshfile;
+
+    if (visual)
+    {
+      meshfile = urdf.getNextVisualMesh();
+      hasMoreMesh = urdf.hasMoreVisualMesh();
+    }
+    else
+    {
+      meshfile = urdf.getNextMesh();
+      hasMoreMesh = urdf.hasMoreMesh();
+    }
+
+    std::string file_extension = getFileExtension(meshfile);
+
+    if (file_extension == "stl" || file_extension == "STL")
+    {
+      RCLCPP_DEBUG(get_logger(), "Handling STL file ..." );
+      RCLCPP_DEBUG_STREAM(get_logger(), "path: " << meshfile );
+
+      // get global meshfile path
+      url::Url filepath(meshfile);
+      std::string pkgName(filepath.getPackageName());
+      // may throw ament_index_cpp::PackageNotFoundError exception
+      std::string pkgPath =
+          ament_index_cpp::get_package_share_directory(pkgName);
+
+      std::string path(filepath.getRelativePath());
+      std::string global_meshfile((pkgPath + path).c_str());
+      RCLCPP_INFO_STREAM(get_logger(), "global path: " << global_meshfile );
+
+      // open STL file
+      MyMesh mesh;
+      int mask = 0;
+
+      if(vcg::tri::io::ImporterSTL<MyMesh>::Open(mesh, global_meshfile.c_str(), mask))
+      {
+        RCLCPP_INFO_STREAM(get_logger(), "Error reading file " << global_meshfile );
+        return;
+      }
+
+      // read mass from file
+      float mass = urdf.getMass(visual);
+
+      // compute inertia and center of mass
+      vcg::Matrix33f Inertia;
+      vcg::tri::Inertia<MyMesh> I(mesh);
+      I.InertiaTensor(Inertia);
+      vcg::Point3f CenterOfMass = I.CenterOfMass();
+
+      // scale inertia according to mass
+      float volume = I.Mass();
+      Inertia /= volume;
+      Inertia *= mass;
+
+      // set new values
+      urdf.setCenterOfMass(CenterOfMass, visual);
+      urdf.setInertia(Inertia, visual);
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(), "UNKNOWN FILE EXTENSION! (only .stl supported)" );
+      return;
+    }
+  }
+
+  if (urdf.save(out_filename.c_str()))
+  {
+    RCLCPP_INFO(get_logger(), "Inertia updated successfully!" );
+  }
+
+  return;
+}
+
+void PrimitiveFitterNode::main(void) {
+  RCLCPP_INFO(this->get_logger(), "step 1 " );
+  std::string in_filename;
+  try {
+    in_filename =
+        this->get_parameter("urdf_filename")
+        .as_string();
+  } catch (...) {
+    std::cerr << "Unable to find parameter urdf_filename" << std::endl;
+    return;
+  }
+
+  RCLCPP_INFO(this->get_logger(), "step 2 ");
+  std::string out_filename("");
+  out_filename = this->get_parameter("output_filename").as_string();
+
+  RCLCPP_INFO(this->get_logger(), "step 3 " );
+  if(out_filename.empty())
+  {
+    size_t lastindex = in_filename.find_last_of(".");
+    out_filename = in_filename.substr(0, lastindex) + "_optimized.urdf.xacro";
+  }
+
+  RCLCPP_INFO(this->get_logger(), "step 4 " );
+  bool fitter = true;
+  fitter = this->get_parameter("use_fitter").as_bool();
+
+  bool inertia = false;
+  inertia = this->get_parameter("use_inertia").as_bool();
+
+  RCLCPP_INFO(this->get_logger(), "step 5 " );
+  std::string capsule_filename("");
+
+  if (inertia)
+  {
+    RCLCPP_INFO(this->get_logger(),
+                "Inertia calculation started.");
+
+    std::string mesh_type = "visual";
+    bool visual = true;
+    mesh_type = this->get_parameter("mesh_type").as_string();
+
+    if (mesh_type == "visual")
+    {
+      visual = true;
+      RCLCPP_INFO(this->get_logger(),"Using visual meshes.");
+    }
+    else if (mesh_type == "collision")
+    {
+      visual = false;
+      RCLCPP_INFO(this->get_logger(),
+                  "Using collision meshes.");
+    }
+    else
+    {
+      RCLCPP_WARN(this->get_logger(),
+                  "PLEASE SET ROSPARAM /nimbro_primitive_fitter/mesh_type"
+                  " TO EITHER visual OR collsion -> Using 'visual'.");
+      visual = true;
+    }
+
+    update_inertia(in_filename, out_filename, visual);
+    in_filename = out_filename;
+  }
+
+  if (fitter)
+  {
+    std::string shape = "box";
+    shape = this->get_parameter("fit_shape").as_string();
+    VersatileFitter::Shape vf_shape;
+
+    if (shape == "box" || shape == "Box")
+    {
+      RCLCPP_INFO(this->get_logger(),
+                  "Will try to fit URDF to Box.");
+      vf_shape = VersatileFitter::Shape::Box;
+    }
+    else if (shape == "capsule" || shape == "Capsule")
+    {
+      RCLCPP_INFO(this->get_logger(),
+                  "Will try to fit URDF to Capsule.");
+      vf_shape = VersatileFitter::Shape::Capsule;
+    }
+    else
+    {
+      RCLCPP_ERROR(this->get_logger(),
+                   "PLEASE SET ROSPARAM /nimbro_primitive_fitter/fit_shape TO EITHER box OR capsule");
+      RCLCPP_INFO(this->get_logger(),"Will try to fit URDF to Box.");
+      vf_shape = VersatileFitter::Shape::Box;
+    }
+
+    VersatileFitter vf(shr_ptr_to_this_);
+    vf.fit(in_filename, out_filename, vf_shape, shape);
+  }
+};
