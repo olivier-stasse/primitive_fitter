@@ -5,6 +5,7 @@ SET(CMAKE_VERBOSE_MAKEFILE TRUE)
 SET(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake) # For finding custom .cmake files
+set(DISABLE_PAL_FLAGS true)
 
 find_package(Boost REQUIRED COMPONENTS system regex)
 find_package(Eigen3 REQUIRED)
@@ -80,7 +81,7 @@ install(TARGETS
 
 install(TARGETS
   approx_mvbb
-  DESTINATION lib
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY launch models
